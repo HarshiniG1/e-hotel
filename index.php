@@ -4,41 +4,96 @@ session_start();
 
 <!DOCTYPE html>
 <html>
+<head>
+    <title>e-Hotels Home</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        button {
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        h1 {
+            color: #2F4F4F;
+        }
+    </style>
+</head>
 <body>
 
-<h2>Search Available Rooms</h2>
+<h1>Welcome to e-Hotels</h1>
 
-<form action="search.php" method="POST">
+<?php if (!isset($_SESSION['customer_id'])): ?>
 
-    Area: <input type="text" name="area"><br><br>
+    <p>You are not logged in.</p>
 
-    Capacity:
-<select name="capacity">
-    <option value="">Any</option>
-    <option value="S">Single</option>
-    <option value="D">Double</option>
-    <option value="Q">Queen</option>
-    <option value="Sui">Suite</option>
-</select><br><br>
+    <!-- Customer actions -->
+    <a href="register.php">
+        <button>Customer Registration</button>
+    </a>
 
-    Hotel Chain ID:
-    <input type="number" name="chain"><br><br>
+    <a href="customer_login.php">
+        <button>Customer Login</button>
+    </a>
 
-    Category (Stars):
-    <input type="number" name="category"><br><br>
+    <!-- Employee actions -->
+    <a href="employee_register.php">
+        <button>Employee Registration</button>
+    </a>
 
-    Max Price:
-    <input type="number" name="price"><br><br>
+    <a href="employee_login.php">
+        <button>Employee Login</button>
+    </a>
 
-    Start Date:
-    <input type="date" name="start" required><br><br>
+<?php else: ?>
 
-    End Date:
-    <input type="date" name="end" required><br><br>
+    <p>Logged in as Customer ID: <?php echo $_SESSION['customer_id']; ?></p>
 
-    <button type="submit">Search</button>
+    <a href="logout_customer.php">
+        <button>Logout</button>
+    </a>
 
-</form>
+    <br><br>
+
+    <h2>Search Available Rooms</h2>
+
+    <form action="search.php" method="POST">
+
+        Area: <input type="text" name="area"><br><br>
+
+        Capacity:
+        <select name="capacity">
+            <option value="">Any</option>
+            <option value="S">Single</option>
+            <option value="D">Double</option>
+            <option value="Q">Queen</option>
+            <option value="Sui">Suite</option>
+        </select><br><br>
+
+        Hotel Chain ID:
+        <input type="number" name="chain"><br><br>
+
+        Category (Stars):
+        <input type="number" name="category"><br><br>
+
+        Max Price:
+        <input type="number" name="price"><br><br>
+
+        Start Date:
+        <input type="date" name="start" required><br><br>
+
+        End Date:
+        <input type="date" name="end" required><br><br>
+
+        <button type="submit">Search</button>
+
+    </form>
+
+<?php endif; ?>
 
 </body>
 </html>
