@@ -1,73 +1,49 @@
 <?php
+session_start();
 include 'db.php';
 
-$area = $_POST['area'];
-$capacity = $_POST['capacity'];
-$chain = $_POST['chain'];
-$category = $_POST['category'];
-$price = $_POST['price'];
-$start = $_POST['start'];
-$end = $_POST['end'];
-
-$query = "
-SELECT r.*
-FROM room r
-JOIN hotel h ON r.hotel_id = h.hotel_id
-WHERE 1=1
-";
-
-// filters
-if (!empty($area)) {
-    $query .= " AND h.address ILIKE '%$area%'";
-}
-
-if (!empty($capacity)) {
-    $query .= " AND r.capacity = '$capacity'";
-}
-
-if (!empty($chain)) {
-    $query .= " AND h.chain_id = $chain";
-}
-
-if (!empty($category)) {
-    $query .= " AND h.category = $category";
-}
-
-if (!empty($price)) {
-    $query .= " AND r.price <= $price";
-}
-
-// availability logic
-$query .= "
-AND r.room_id NOT IN (
-    SELECT room_id FROM booking
-    WHERE (start_date, end_date) OVERLAPS ('$start', '$end')
-)
-AND r.room_id NOT IN (
-    SELECT room_id FROM renting
-    WHERE (start_date, end_date) OVERLAPS ('$start', '$end')
-)
-";
-
-$result = pg_query($conn, $query);
-
-if (!$result) {
-    die("Query failed: " . pg_last_error($conn));
-}
-
-echo "<h2>Available Rooms</h2>";
-
-while ($row = pg_fetch_assoc($result)) {
-    echo "Room ID: " . $row['room_id'] . "<br>";
-    echo "Price: " . $row['price'] . "<br>";
-    echo "<hr>";
-
-    echo "<form method='POST' action='book.php'>
-    <input type='hidden' name='room_id' value='".$row['room_id']."'>
-    <input type='hidden' name='start' value='".$start."'>
-    <input type='hidden' name='end' value='".$end."'>
-    <button type='submit'>Book</button>
-</form>";
-
+if (!isset($_SESSION['customer_id'])) {
+    die("Please register/login first.");
 }
 ?>
+
+<!DOCTYPE html>
+<html>
+<body>
+
+<h2>Search Available Rooms</h2>
+
+<form action="search_results.php" method="POST">
+
+    Area: <input type="text" name="area"><br><br>
+
+    Capacity:
+    <select name="capacity">
+        <option value="">Any</option>
+        <option value="S">Single</option>
+        <option value="D">Double</option>
+        <option value="Q">Queen</option>
+        <option value="Sui">Suite</option>
+    </select><br><br>
+
+    Hotel Chain ID:
+    <input type="number" name="chain"><br><br>
+
+    Category:
+    <input type="number" name="category"><br><br>
+
+    Max Price:
+    <input type="number" name="price"><br><br>
+
+    Start Date:
+    <input type="date" name="start" required><br><br>
+
+    End Date:
+    <input type="date" name="end" required><br><br>
+
+    <button type="submit">Search</button>
+
+</form>
+
+</body>
+</html>
