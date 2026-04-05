@@ -1,40 +1,48 @@
+<?php
+session_start();
+?>
+
 <!DOCTYPE html>
 <html>
+<head>
+    <title>e-Hotels Home</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        button {
+            padding: 15px 30px;
+            margin: 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        h1 {
+            color: #2F4F4F;
+        }
+    </style>
+</head>
 <body>
 
-<h2>Search Available Rooms</h2>
+<h1>Welcome to e-Hotels</h1>
 
-<form action="search.php" method="POST">
+<p>Select an option:</p>
 
-    Area: <input type="text" name="area"><br><br>
+<!-- Customer Registration -->
+<a href="register.php">
+    <button>Customer Registration</button>
+</a>
 
-    Capacity:
-<select name="capacity">
-    <option value="">Any</option>
-    <option value="S">Single</option>
-    <option value="D">Double</option>
-    <option value="Q">Queen</option>
-    <option value="Sui">Suite</option>
-</select><br><br>
+<!-- Employee Registration -->
+<a href="employee_register.php">
+    <button>Employee Registration</button>
+</a>
 
-    Hotel Chain ID:
-    <input type="number" name="chain"><br><br>
-
-    Category (Stars):
-    <input type="number" name="category"><br><br>
-
-    Max Price:
-    <input type="number" name="price"><br><br>
-
-    Start Date:
-    <input type="date" name="start" required><br><br>
-
-    End Date:
-    <input type="date" name="end" required><br><br>
-
-    <button type="submit">Search</button>
-
-</form>
+<!-- Employee Login -->
+<a href="employee_login.php">
+    <button>Employee Login</button>
+</a>
 
 </body>
 </html>

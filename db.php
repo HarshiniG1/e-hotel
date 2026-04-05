@@ -1,7 +1,9 @@
 <?php
-$conn = pg_connect("host=192.168.0.14 port=5432 dbname=e-hotels user=chessinah password=chekasyes");
+$conn = pg_connect("host=localhost port=5432 dbname=e-hotels user=postgres password=Btsardy6677");
 
 if (!$conn) {
     die("Connection failed: " . pg_last_error());
+} else {
+    echo "Connection successful!";
 }
 ?>
