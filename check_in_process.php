@@ -2,108 +2,92 @@
 session_start();
 include 'db.php';
 
-// Make sure employee is logged in
 if (!isset($_SESSION['employee_id'])) {
-    die("Please login as employee first.");
+    die("Access denied. <a href='employee_login.php'>Login</a>");
 }
 
 $employee_id = $_SESSION['employee_id'];
+$employee_name = $_SESSION['employee_name'];
+$hotel_id = $_SESSION['hotel_id'];
 
-// Get POST data
-$customer_id = $_POST['customer_id'] ?? null;  // may be null for walk-in
-$room_id = $_POST['room_id'] ?? null;
-$start = $_POST['start'] ?? null;
-$end = $_POST['end'] ?? null;
+// POST data
+$booking_id = isset($_POST['booking_id']) ? intval($_POST['booking_id']) : null;
+$customer_id = isset($_POST['customer_id']) ? intval($_POST['customer_id']) : null;
+$room_id = isset($_POST['room_id']) ? intval($_POST['room_id']) : null;
+$start_date = isset($_POST['start']) ? $_POST['start'] : null;
+$end_date = isset($_POST['end']) ? $_POST['end'] : null;
 
-// Validate inputs
-if (!$room_id || !$start || !$end) {
-    die("Missing room or date information.");
+if (!$room_id) die("Room ID is required.");
+if (!$customer_id) die("Customer ID is required.");
+
+// Check room exists
+$query_room = "SELECT * FROM room WHERE room_id = $1 AND hotel_id = $2";
+$result_room = pg_query_params($conn, $query_room, [$room_id, $hotel_id]);
+if (pg_num_rows($result_room) == 0) die("Invalid Room ID or it does not belong to this hotel.");
+
+// If converting a booking
+if ($booking_id) {
+    // Update booking status first
+    $update_status = "UPDATE booking SET status='checked-in' WHERE booking_id=$1";
+    pg_query_params($conn, $update_status, [$booking_id]);
+
+    // Get booking info
+    $query_booking = "SELECT * FROM booking WHERE booking_id=$1";
+    $res_booking = pg_query_params($conn, $query_booking, [$booking_id]);
+    if (pg_num_rows($res_booking) == 0) die("Booking not found.");
+
+    $booking = pg_fetch_assoc($res_booking);
+    $start_date = $booking['start_date'];
+    $end_date = $booking['end_date'];
+
+    // Create renting
+    $insert_renting = "INSERT INTO renting (customer_id, hotel_id, room_id, employee_id, start_date, end_date, payment_status)
+                       VALUES ($1,$2,$3,$4,$5,$6,FALSE)";
+    $res_renting = pg_query_params($conn, $insert_renting, [
+        $booking['customer_id'],
+        $booking['hotel_id'],
+        $booking['room_id'],
+        $employee_id,
+        $start_date,
+        $end_date
+    ]);
+    if (!$res_renting) die("Failed to create renting: " . pg_last_error($conn));
+
+    // Delete booking (will trigger archive)
+    $delete_booking = "DELETE FROM booking WHERE booking_id=$1";
+    pg_query_params($conn, $delete_booking, [$booking_id]);
+
+    echo "Booking converted into renting successfully!";
+} else {
+    // Direct renting
+    if (!$start_date || !$end_date) die("Start and End dates are required.");
+
+    $insert_renting = "INSERT INTO renting (customer_id, hotel_id, room_id, employee_id, start_date, end_date, payment_status)
+                       VALUES ($1,$2,$3,$4,$5,$6,FALSE)";
+    $res_renting = pg_query_params($conn, $insert_renting, [
+        $customer_id,
+        $hotel_id,
+        $room_id,
+        $employee_id,
+        $start_date,
+        $end_date
+    ]);
+    if (!$res_renting) die("Failed to create direct renting: " . pg_last_error($conn));
+
+    echo "Direct renting created successfully!";
 }
 
-// 1️⃣ Handle walk-in customer if customer_id is null
-if (!$customer_id) {
-    $query = "INSERT INTO customer (full_name, address, id_type, registration_date)
-              VALUES ('Walk-in Customer', 'Unknown', 'N/A', CURRENT_DATE)
-              RETURNING customer_id";
-    $res = pg_query($conn, $query);
-    if (!$res) {
-        die("Failed to create customer: " . pg_last_error($conn));
-    }
-    $row = pg_fetch_assoc($res);
-    $customer_id = $row['customer_id'];
-}
-
-// 2️⃣ Get hotel_id from the room
-$query = "SELECT hotel_id FROM room WHERE room_id = $room_id";
-$res = pg_query($conn, $query);
-if (!$res) {
-    die("Failed to get hotel_id: " . pg_last_error($conn));
-}
-$row = pg_fetch_assoc($res);
-$hotel_id = $row['hotel_id'];
-
-// 3️⃣ Check if this customer already has a booking for this room and dates
-$query_check = "
-SELECT * FROM booking
-WHERE customer_id = $customer_id AND room_id = $room_id
-AND (start_date, end_date) OVERLAPS ('$start', '$end')
-";
-$res_check = pg_query($conn, $query_check);
-$has_booking = pg_num_rows($res_check) > 0;
-
-// 4️⃣ If booking exists, archive it
-if ($has_booking) {
-    $row_booking = pg_fetch_assoc($res_check);
-    $booking_id = $row_booking['booking_id'];
-    
-    // Insert into booking_archive
-    $query_archive = "
-    INSERT INTO booking_archive (archived_booking_id, customer_name, room_info, hotel_info, booking_date, start_date, end_date, status)
-    SELECT $booking_id, c.full_name, r.room_id::text, h.hotel_name, CURRENT_DATE, b.start_date, b.end_date, 'Archived'
-    FROM booking b
-    JOIN customer c ON c.customer_id = b.customer_id
-    JOIN room r ON r.room_id = b.room_id
-    JOIN hotel h ON h.hotel_id = r.hotel_id
-    WHERE b.booking_id = $booking_id
-    ";
-    $res_archive = pg_query($conn, $query_archive);
-    if (!$res_archive) {
-        die("Failed to archive booking: " . pg_last_error($conn));
-    }
-
-    // Delete the booking
-    $res_del = pg_query($conn, "DELETE FROM booking WHERE booking_id = $booking_id");
-    if (!$res_del) {
-        die("Failed to delete booking: " . pg_last_error($conn));
-    }
-}
-
-// 5️⃣ Insert into renting
-$query_rent = "
-INSERT INTO renting (customer_id, hotel_id, room_id, employee_id, start_date, end_date, payment_status)
-VALUES ($customer_id, $hotel_id, $room_id, $employee_id, '$start', '$end', NULL)
-RETURNING renting_id
-";
-$res_rent = pg_query($conn, $query_rent);
-if (!$res_rent) {
-    die("Failed to create renting: " . pg_last_error($conn));
-}
-$row_rent = pg_fetch_assoc($res_rent);
-$renting_id = $row_rent['renting_id'];
-
-// 6️⃣ Archive renting (optional if you want to keep renting history immediately)
-$query_rent_archive = "
+// Optional: update renting_archive for past stays
+$update_archive = "
 INSERT INTO renting_archive (archived_renting_id, customer_name, room_info, hotel_info, renting_date, start_date, end_date, status, employee_name)
-SELECT $renting_id, c.full_name, r.room_id::text, h.hotel_name, CURRENT_DATE, '$start', '$end', 'Active', e.full_name
-FROM customer c
-JOIN room r ON r.room_id = $room_id
+SELECT r.renting_id, c.full_name, r.room_id::text, h.hotel_name, CURRENT_DATE, r.start_date, r.end_date,
+       CASE WHEN r.payment_status THEN 'paid' ELSE 'unpaid' END, e.full_name
+FROM renting r
+JOIN customer c ON c.customer_id = r.customer_id
 JOIN hotel h ON h.hotel_id = r.hotel_id
-JOIN employee e ON e.employee_id = $employee_id
+JOIN employee e ON e.employee_id = r.employee_id
+WHERE r.end_date < CURRENT_DATE
+ON CONFLICT (archived_renting_id) DO NOTHING;
 ";
-$res_rent_archive = pg_query($conn, $query_rent_archive);
-if (!$res_rent_archive) {
-    die("Failed to archive renting: " . pg_last_error($conn));
-}
-
-echo "Check-in successful! Renting created with ID: $renting_id";
+pg_query($conn, $update_archive);
 ?>
