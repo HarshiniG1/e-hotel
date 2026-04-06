@@ -20,7 +20,7 @@ if (!$result) {
 
 $row = pg_fetch_assoc($result);
 
-// ✅ STORE SESSION
+
 $_SESSION['customer_id'] = $row['customer_id'];
 
 echo "Registration successful!";

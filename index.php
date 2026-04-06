@@ -1,5 +1,15 @@
+```php
 <?php
 session_start();
+include 'db.php';
+
+// VIEW 1
+$available_query = "SELECT * FROM available_rooms_per_area";
+$available_result = pg_query($conn, $available_query);
+
+// VIEW 2
+$capacity_query = "SELECT * FROM hotel_total_capacity";
+$capacity_result = pg_query($conn, $capacity_query);
 ?>
 
 <!DOCTYPE html>
@@ -21,6 +31,20 @@ session_start();
         h1 {
             color: #2F4F4F;
         }
+        table {
+            margin: auto;
+            border-collapse: collapse;
+            width: 60%;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        th {
+            background-color: #2F4F4F;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -31,31 +55,17 @@ session_start();
 
     <p>You are not logged in.</p>
 
-    <!-- Customer actions -->
-    <a href="register.php">
-        <button>Customer Registration</button>
-    </a>
+    <a href="register.php"><button>Customer Registration</button></a>
+    <a href="customer_login.php"><button>Customer Login</button></a>
 
-    <a href="customer_login.php">
-        <button>Customer Login</button>
-    </a>
-
-    <!-- Employee actions -->
-    <a href="employee_register.php">
-        <button>Employee Registration</button>
-    </a>
-
-    <a href="employee_login.php">
-        <button>Employee Login</button>
-    </a>
+    <a href="employee_register.php"><button>Employee Registration</button></a>
+    <a href="employee_login.php"><button>Employee Login</button></a>
 
 <?php else: ?>
 
     <p>Logged in as Customer ID: <?php echo $_SESSION['customer_id']; ?></p>
 
-    <a href="logout_customer.php">
-        <button>Logout</button>
-    </a>
+    <a href="logout_customer.php"><button>Logout</button></a>
 
     <br><br>
 
@@ -95,5 +105,40 @@ session_start();
 
 <?php endif; ?>
 
+<!-- VIEW 1 (VISIBLE TO EVERYONE) -->
+<h2>Available Rooms Per Area</h2>
+
+<table>
+    <tr>
+        <th>Area</th>
+        <th>Available Rooms</th>
+    </tr>
+
+    <?php while ($row = pg_fetch_assoc($available_result)) { ?>
+        <tr>
+            <td><?php echo $row['address']; ?></td>
+            <td><?php echo $row['available_rooms']; ?></td>
+        </tr>
+    <?php } ?>
+</table>
+
+<!-- VIEW 2 (FIXED: total_rooms) -->
+<h2>Hotel Total Rooms</h2>
+
+<table>
+    <tr>
+        <th>Hotel Name</th>
+        <th>Total Rooms</th>
+    </tr>
+
+    <?php while ($row = pg_fetch_assoc($capacity_result)) { ?>
+        <tr>
+            <td><?php echo $row['hotel_name']; ?></td>
+            <td><?php echo $row['total_rooms']; ?></td>
+        </tr>
+    <?php } ?>
+</table>
+
 </body>
 </html>
+```
